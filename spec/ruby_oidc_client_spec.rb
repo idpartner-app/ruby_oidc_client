@@ -94,15 +94,15 @@ RSpec.describe RubyOidcClient::IDPartner do
       jwks = JSON.parse(jwks_json)
       public_jwks = id_partner.public_jwks
 
-      jwks_kids = jwks['keys'].map { |key| key['kid'] }
-      public_jwks_kids = public_jwks['keys'].map { |key| key['kid'] }
+      jwks_kids = jwks["keys"].map { |key| key["kid"] }
+      public_jwks_kids = public_jwks["keys"].map { |key| key["kid"] }
 
       expect(public_jwks_kids).to match_array(jwks_kids)
 
       private_key_fields = %w[d p q dp dq qi]
-      public_jwks['keys'].each do |key|
+      public_jwks["keys"].each do |key|
         private_key_fields.each do |field|
-          expect(key).not_to have_key(field), "Private key field '#{field}' exposed for kid '#{key['kid']}'"
+          expect(key).not_to have_key(field), "Private key field '#{field}' exposed for kid '#{key["kid"]}'"
         end
       end
     end

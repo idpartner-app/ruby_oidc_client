@@ -209,12 +209,12 @@ module RubyOidcClient
                                        aud: config[:provider_url],
                                        exp: Time.now.to_i + 60,
                                        iat: Time.now.to_i,
-                                       nbf: Time.now.to_i,
+                                       nbf: Time.now.to_i
                                      })
 
       sig_key = sig_key()
       jwt = JSON::JWT.new(extended_params)
-      jwt.sign(sig_key(), sig_key["alg"]).to_s
+      jwt.sign(sig_key, sig_key["alg"]).to_s
     end
 
     def push_authorization_request(request_object)
@@ -251,8 +251,8 @@ module RubyOidcClient
     end
 
     def decode_jwt(jwt_str)
-      if jwt_str.split('.').length == 5
-        jwe = JSON::JWT.decode(jwt_str, enc_key())
+      if jwt_str.split(".").length == 5
+        jwe = JSON::JWT.decode(jwt_str, enc_key)
         jwt_str = jwe.plain_text
       end
 
@@ -266,14 +266,12 @@ module RubyOidcClient
       @provider_keys[kid] || (raise "No provider key found for kid: #{kid}")
     end
 
-    private
-
     def fetch_provider_keys
       jwks_uri = endpoints[:jwks_uri]
       fetched_provider_keys = JSON::JWK::Set::Fetcher.fetch(jwks_uri, kid: nil, auto_detect: false)
       @provider_keys = {}
       fetched_provider_keys.each do |key|
-        @provider_keys[key['kid']] = key
+        @provider_keys[key["kid"]] = key
       end
     end
   end
