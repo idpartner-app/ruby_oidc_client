@@ -76,7 +76,7 @@ http_interactions:
     uri: http://localhost:9001/oidc/request
     body:
       encoding: US-ASCII
-      string: redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fbutton%2Foauth%2Fcallback&code_challenge_method=S256&code_challenge=73oehA2tBul5grZPhXUGQwNAjxh69zNES8bu2bVD0EM&state=state&nonce=nonce&scope=openid&prompt=consent&response_type=code&client_id=F8W8ZKUiyRX_0noOLa943&nbf=1698888518&x-fapi-interaction-id=6fd5dd15-b858-4f34-972a-3d6e998c1616&response_mode=jwt
+      string: redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fbutton%2Foauth%2Fcallback&code_challenge_method=S256&code_challenge=73oehA2tBul5grZPhXUGQwNAjxh69zNES8bu2bVD0EM&state=state&nonce=nonce&scope=openid&prompt=consent&response_type=code&client_id=CLIENT_ID&nbf=1698888518&x-fapi-interaction-id=6fd5dd15-b858-4f34-972a-3d6e998c1616&response_mode=jwt
     headers:
       Authorization:
       - Basic RjhXOFpLVWl5UlhfMG5vT0xhOTQzOmVkaFF5SWpFZzFIVjlzTnkyVzRVLWM2VFZSUUxzWVRxMno4UDZlZzhYOGE2ZVNyNkhKYXo5NDNmb05BRE5MaXBDRnBPLXpiOG1pbmhCRHlJbERWYlR3
