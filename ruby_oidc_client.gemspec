@@ -33,7 +33,14 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Uncomment to register a new dependency of your gem
-  # spec.add_dependency "example-gem", "~> 1.0"
+  spec.add_dependency "json-jwt", "~> 1.16.3"
+
+  # Optionally, within your gemspec file if you prefer to declare dev/test dependencies here
+  spec.add_development_dependency "rake", "~> 13.0"
+  spec.add_development_dependency "rspec", "~> 3.0"
+  spec.add_development_dependency "rubocop", "~> 1.21"
+  spec.add_development_dependency "vcr", "~> 6.2.0"
+  spec.add_development_dependency "webmock", "~> 3.19.1"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
