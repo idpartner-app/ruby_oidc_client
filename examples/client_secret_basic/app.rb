@@ -21,7 +21,7 @@ class App < Sinatra::Base
   end
 
   get '/button/oauth' do
-    scope = ['openid', 'email', 'profile']
+    scope = ['openid', 'offline_access', 'email', 'profile', 'birthdate address'];
     prompt = 'consent'
     proofs = id_partner.generate_proofs
     session[:proofs] = proofs
