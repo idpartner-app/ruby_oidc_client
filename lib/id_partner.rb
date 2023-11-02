@@ -17,7 +17,7 @@ module RubyOidcClient
     ENCRYPTION_ALG = "RSA-OAEP"
     ENCRYPTION_ENC = "A256CBC-HS512"
 
-    attr_reader :config, :endpoints
+    attr_reader :config, :endpoints, :provider_keys
 
     def initialize(config)
       raise ArgumentError, "Config missing." unless config
@@ -101,7 +101,6 @@ module RubyOidcClient
         prompt: prompt,
         response_type: "code",
         client_id: client_id,
-        nbf: Time.now.to_i,
         'x-fapi-interaction-id': SecureRandom.uuid,
         identity_provider_id: query[:idp_id],
         idpartner_token: idpartner_token,
@@ -131,14 +130,14 @@ module RubyOidcClient
 
     def token(query, proofs)
       # Assuming you have a method to decode the token
-      verified_token = verify_jws(query[:response])
+      decoded_jwt = decode_jwt(query[:response])
 
       # Create the credentials for Basic Authorization header
       basic_auth_credentials = Base64.strict_encode64("#{config[:client_id]}:#{config[:client_secret]}")
 
       # Prepare the payload for the token exchange request
       payload = {
-        code: verified_token["code"],
+        code: decoded_jwt["code"],
         code_verifier: proofs[:code_verifier],
         grant_type: "authorization_code",
         redirect_uri: config[:redirect_uri]
@@ -209,11 +208,13 @@ module RubyOidcClient
                                        iss: config[:client_id],
                                        aud: config[:provider_url],
                                        exp: Time.now.to_i + 60,
-                                       iat: Time.now.to_i
+                                       iat: Time.now.to_i,
+                                       nbf: Time.now.to_i,
                                      })
+
+      sig_key = sig_key()
       jwt = JSON::JWT.new(extended_params)
-      private_key = parse_private_key(config[:jwks])
-      jwt.sign(private_key, :PS256).to_s
+      jwt.sign(sig_key(), sig_key["alg"]).to_s
     end
 
     def push_authorization_request(request_object)
@@ -239,30 +240,41 @@ module RubyOidcClient
       Base64.urlsafe_encode64(Digest::SHA256.digest(code_verifier)).gsub(/=+$/, "")
     end
 
-    def parse_private_key(jwks)
-      jwk_set = JSON::JWK::Set.new(JSON.parse(jwks))
-      jwk = jwk_set.select { |j| j[:use] == "sig" }.first
-      jwk.to_key
+    def sig_key
+      jwk_set = JSON::JWK::Set.new(JSON.parse(config[:jwks]))
+      jwk_set.find { |j| j[:use] == "sig" }
     end
 
-    def verify_jws(jwt)
-      # Obtain the JWKS from the issuer
-      jwks_uri = URI(endpoints[:jwks_uri])
-      jwks_response = Net::HTTP.get_response(jwks_uri)
-      raise "Failed to fetch JWKS: #{jwks_response.body}" unless jwks_response.is_a?(Net::HTTPSuccess)
+    def enc_key
+      jwk_set = JSON::JWK::Set.new(JSON.parse(config[:jwks]))
+      jwk_set.find { |j| j[:use] == "enc" }
+    end
 
-      jwks_data = JSON.parse(jwks_response.body)
+    def decode_jwt(jwt_str)
+      if jwt_str.split('.').length == 5
+        jwe = JSON::JWT.decode(jwt_str, enc_key())
+        jwt_str = jwe.plain_text
+      end
 
-      # Decode the JWT without verification to obtain the header
-      unverified_jwt = JSON::JWT.decode jwt, :skip_verification
-      kid = unverified_jwt.header[:kid]
-      sig_key_data = jwks_data["keys"].find { |key| key["kid"] == kid }
-      raise "No signing key found in JWKS" unless sig_key_data
+      kid = JSON::JWT.decode(jwt_str, :skip_verification).kid
+      sig_key = provider_key(kid)
+      JSON::JWT.decode(jwt_str, sig_key)
+    end
 
-      sig_key = JSON::JWK.new(sig_key_data)
+    def provider_key(kid)
+      fetch_provider_keys unless provider_keys
+      @provider_keys[kid] || (raise "No provider key found for kid: #{kid}")
+    end
 
-      # Now verify the JWT signature
-      JSON::JWT.decode jwt, sig_key
+    private
+
+    def fetch_provider_keys
+      jwks_uri = endpoints[:jwks_uri]
+      fetched_provider_keys = JSON::JWK::Set::Fetcher.fetch(jwks_uri, kid: nil, auto_detect: false)
+      @provider_keys = {}
+      fetched_provider_keys.each do |key|
+        @provider_keys[key['kid']] = key
+      end
     end
   end
 end

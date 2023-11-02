@@ -1,0 +1,7 @@
+{
+  "client_id": "F8W8ZKUiyRX_0noOLa943",
+  "client_secret": "edhQyIjEg1HV9sNy2W4U-c6TVRQLsYTq2z8P6eg8X8a6eSr6HJaz943foNADNLipCFpO-zb8minhBDyIlDVbTw",
+  "redirect_uri": "http://localhost:3001/button/oauth/callback",
+  "cookie_secret": "CHANGE_ME_COOKIE_SECRET",
+  "port": 3001
+}

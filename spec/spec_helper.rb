@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../lib/idpartner"
+require_relative "../lib/id_partner"
 
 require "vcr"
 
