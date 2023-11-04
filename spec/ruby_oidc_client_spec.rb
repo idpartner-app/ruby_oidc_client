@@ -48,16 +48,16 @@ RSpec.describe RubyOidcClient::IDPartner do
     let(:query) { { iss: "http://localhost:9001/oidc" } }
     let(:proofs) { { state: "state", nonce: "nonce", code_verifier: "code_verifier" } }
     let(:scope) { %w[openid email profile] }
-    let(:prompt) { "consent" }
+    let(:extra_authorization_params) { { prompt: "consent" } }
 
     it "returns an authorization url" do
-      url = id_partner.get_authorization_url(query, proofs, scope, prompt, nil)
+      url = id_partner.get_authorization_url(query, proofs, scope, extra_authorization_params)
       expect(url).to eq("http://localhost:9001/oidc/auth?request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3ABfdJw4QAuMr5Ir6a-Uypx")
     end
 
     describe "#token" do
       it "exchanges a code from a JWS for a token" do
-        id_partner.get_authorization_url(query, proofs, scope, prompt, nil)
+        id_partner.get_authorization_url(query, proofs, scope, extra_authorization_params)
         token_response = id_partner.token(
           { response: "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ii1NXzl2cUppMHRTWURlWEZoM2Nsdlo3MG50Qm9zVVZUOWFxQi0tMlNRaVUifQ.eyJjb2RlIjoiVEJvYTlLR1lsU2RPMGZGdnhJMklYV2NnV3diT1VVYlpQNjB6VWh5TkQyVyIsInN0YXRlIjoib3FKYm13eDZuQ1ZDRF9LanQ2cE9kbjZpZTF4R3REY2VlTHRiN0x4azRBYzBIeWxEMzBxd241cGdyYm9rRjBmQW53aVBOT1JPQWk4ZWtGYlhXbHJIU3ciLCJhdWQiOiJGOFc4WktVaXlSWF8wbm9PTGE5NDMiLCJleHAiOjE2OTg4Njc3NDYsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6OTAwMS9vaWRjIn0.XACQeu39-bNTLSW0AKh5IvNnjzQhCsTejvPpYEt-Obcyu6D-Z6hm7r-9q_TM5eRL9S2M2D9TqzOMro_ncZ7GUR4ERUn1sCmHxBE_amSUeecXIifTYonUPnRf3AfzJ3hDyewXQ2nyJt2wVmFe2WXPkJsbFZadZnjJt9hu5TG7QH2wPraZj7JcfERF6kbmu30NzPC-qW8DmzH3B5KpJ74S3WkUSgq0C3S_BHDbzYKjuAnKtrxt92jFlvthYApaLrimNKxjvZCe38Yd8G0kq8EWVi3X4pX2GF9cGc7mheZB88gN_AEWiSgPuUMKOWpEDMu_TDAetZix8sBtUnDFnz7vcg" }, proofs
         )
@@ -66,7 +66,7 @@ RSpec.describe RubyOidcClient::IDPartner do
 
       it "exchanges a code from a JWE for a token" do
         config[:jwks] = jwks_json
-        id_partner.get_authorization_url(query, proofs, scope, prompt, nil)
+        id_partner.get_authorization_url(query, proofs, scope, extra_authorization_params)
         token_response = id_partner.token(
           { response: "eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkEyNTZDQkMtSFM1MTIiLCJjdHkiOiJKV1QiLCJraWQiOiJ1NjRWc0lCLWN4WDNOSGYxblluMU90QlhtV1dRZlpacDJCVk4xclpMNlhVIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo5MDAxL29pZGMiLCJhdWQiOiJKWXJMTzBKal93RGRRUk0ySmlyM2IifQ.RTCfCHa4FB3gdRpzY-jwFcLIAK43fqTjWNMogeElVo7awa6sTkuCotjA_0TyH13R-wzttl_BUPVALnlW9kqdOFuWznkj_erIiFNQTCVIsqm0ZQsFGHBvTDe_lbBYHwwQ1sLUOQExTafE6f5jqrdGN30ylF3HAJJbG3sRR1VBVJdZwck0iar0m5s__iJN0bqlMa-e3jkCyQYJBrKhsMCl1dNm0UnpgpA1Tl5ElVDPByDm9aErN5xe6c5Hw0GTVTKbii2Wk1YXwigTkhrw0dk1xedo8hT1MW90t083An-Y74iU93gJdb4lG6UAxa1bXLpYUJUjHa4dosXSJ22zOcWbaQ.NDyH71DNX_XNMNLYl49cyQ.2LXuEa-vxF4i76N7mKMOkS236Wh_lCP7eksrml_vfIDKea4KuFoHPRhdMUggiJdSS_ybZoyv876Uw-38lTRBaxYp8VSHZCCVdy5uPsr4GTzLt7vWBRw5XQkdNfv8qPpGx15uHpxWLSV_38GaSil__WTnq4RRUmv6IYlZbH4X-a_UojH_po4n98yDolxMQJUtHIWmwQCHH3G8bIiYryy-t79KQfX5s_yLdO6zjC_6MfTAs9EEFkBub2_d-IBujg7RnEGFJU3eLRlOB5W60McrJIe000LrzeE3ahDIY0Xxwy7qXAAXWq1bL0tExNBtLTRpdUCoR35xDwHgh0Mg4FCOcys8KCZtJrCFXhX4z3ctqcR0FIs_cNmxal-3EIUXY8GfvRXyD3pkePFW4Rlr4GTdThpz2rujL3LX6-QXCjmgHVUR-eQj1VDq9fIVC1PqsTh_OpHgwjyiqzWwNIQTnyrIPjKsiRI4n7Bm6UorY0_SEsS71AXw7OivUrTCKtCkzMJzACUtVaU1Hg5DMchqON-ZYArpJQmSQBk8Sz9GFGgT-WBuDMgAkdQOgf4z5PwsjeFf-akLt14BmRYiURbB5kTprEHvRF0eYkiG1yn_AwIGZNneRUh-qcoIotIgi2iazpVA6EpO0FY0WiF9Wh7gF-lrdIqBKTPL2VyMdjjDtWXqx04Q4IIv2hj3oMigSmvVQm1lTetPnvfPNhZ3gTeu9DT6tF-VSy9GvBY6AhNchyb2r-EvFpRfjZDu-ZX4yPKLajdRdNhpg8AqEvT4Uzq0dxKF7GKNB86QnE8kzcFxt1JWQ6ox_fqC2btvzXVveyQC4211CjqFAHKB2fSl33IY8EY2bUT76Gf1s4NcvUgfc_0Uo6026ljIzv8as6iWUPbs_99NYffMXvP3QYC7qHKbYfQjsy37EeBOig0sSw-Yi9de2v1dSbMDl5xlyrWBkAjX2PhzA1Sz9ioU4gxnQ0Z3QzcqXy8Ev1e1djbaPmXa_xwnvYsHn9bl50OyTW0IUdDZy3Oz.C-Yc1Z4TIywcPuzjwVkntTxy-1LCx5TIQ8Aygf2v_Pc" }, proofs
         )
@@ -78,7 +78,7 @@ RSpec.describe RubyOidcClient::IDPartner do
       let(:access_token) { "NHtB5NG6woOQSeGn5BQr5qAu6ai8B_edu8S9VpfrAXY" }
 
       it "retrieves user info" do
-        id_partner.get_authorization_url(query, proofs, scope, prompt, nil)
+        id_partner.get_authorization_url(query, proofs, scope, extra_authorization_params)
         userinfo_response = id_partner.userinfo(access_token)
         expect(userinfo_response["sub"]).to eq("32f0998fc710c68c7661f73d12bf07e987a4cb688b3dfa48a6ee27f95262ee22")
         expect(userinfo_response["email"]).to eq("PhilipHLovett@mikomotest.com")

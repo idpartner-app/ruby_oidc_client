@@ -12,7 +12,6 @@ class App < Sinatra::Base
   enable :sessions
 
   id_partner = RubyOidcClient::IDPartner.new({
-                                               account_selector_service_url: "http://localhost:9002",
                                                client_id: config["client_id"],
                                                client_secret: config["client_secret"],
                                                redirect_uri: config["redirect_uri"]
@@ -23,12 +22,11 @@ class App < Sinatra::Base
   end
 
   get "/button/oauth" do
-    scope = ["openid", "offline_access", "email", "profile", "birthdate address"]
-    prompt = "consent"
+    scope = config["scope"]
     proofs = id_partner.generate_proofs
     session[:proofs] = proofs
     session[:issuer] = params[:iss]
-    redirect id_partner.get_authorization_url(params, proofs, scope, prompt, nil)
+    redirect id_partner.get_authorization_url(params, proofs, scope, { prompt: "consent" })
   end
 
   get "/button/oauth/callback" do

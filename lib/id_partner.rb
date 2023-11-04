@@ -51,9 +51,6 @@ module RubyOidcClient
                     end
 
       @config = @config.merge({
-                                client_id: @config[:client_id],
-                                token_endpoint_auth_method: @config[:token_endpoint_auth_method],
-                                redirect_uri: @config[:redirect_uri],
                                 authorization_signed_response_alg: SIGNING_ALG,
                                 id_token_signed_response_alg: SIGNING_ALG
                               }).merge(client_secret_config).merge(jwks_config)
@@ -67,49 +64,37 @@ module RubyOidcClient
       }
     end
 
-    def get_authorization_url(query, proofs, scope, prompt, claims_object)
-      client_id = config[:client_id]
-      account_selector_service_url = config[:account_selector_service_url]
-
+    def get_authorization_url(query, proofs, scope, extra_authorization_params = {})
       raise ArgumentError, "The URL query parameters are required." unless query
-      raise ArgumentError, "The proofs parameters are required." unless proofs
       raise ArgumentError, "The scope parameters are required." unless scope
+      raise ArgumentError, "The proofs parameters are required." unless proofs
+      raise ArgumentError, "The extra_authorization_params parameters are required." unless extra_authorization_params
 
-      iss = query[:iss]
-      visitor_id = query[:visitor_id]
-      idpartner_token = query[:idpartner_token]
-
-      claims = extract_claims(claims_object)
-
-      if iss.nil?
-        return "#{account_selector_service_url}/auth/select-accounts?client_id=#{client_id}&visitor_id=#{visitor_id}&scope=#{scope.join("+")}&claims=#{claims.join("+")}"
+      if query[:iss].nil?
+        return "#{config[:account_selector_service_url]}/auth/select-accounts?client_id=#{config[:client_id]}&visitor_id=#{query[:visitor_id]}&scope=#{scope}&claims=#{extract_claims(extra_authorization_params[:claims]).join("+")}"
       end
 
-      @config[:provider_url] = iss
+      @config[:iss] = query[:iss]
       obtain_well_known_config_endpoints
 
-      state, nonce, code_verifier = proofs.values_at(:state, :nonce, :code_verifier)
-      code_challenge = generate_code_challenge(code_verifier)
-
-      authorization_params = {
+      extra_authorization_params[:claims] = extra_authorization_params[:claims]&.to_json
+      extended_authorization_params = {
         redirect_uri: config[:redirect_uri],
         code_challenge_method: "S256",
-        code_challenge: code_challenge,
-        state: state,
-        nonce: nonce,
-        scope: scope.join(" "),
-        prompt: prompt,
+        code_challenge: generate_code_challenge(proofs[:code_verifier]),
+        state: proofs[:state],
+        nonce: proofs[:nonce],
+        scope: scope,
         response_type: "code",
-        client_id: client_id,
+        client_id: config[:client_id],
         'x-fapi-interaction-id': SecureRandom.uuid,
         identity_provider_id: query[:idp_id],
-        idpartner_token: idpartner_token,
-        claims: claims_object&.to_json,
+        idpartner_token: query[:idpartner_token],
         response_mode: "jwt"
-      }.compact
+      }.merge(extra_authorization_params).compact
 
-      pushed_authorization_request_params = authorization_params
-      pushed_authorization_request_params = { request: create_request_object(authorization_params) } if config[:jwks]
+      pushed_authorization_request_params = extended_authorization_params
+      pushed_authorization_request_params = { request: create_request_object(extended_authorization_params) } if config[:jwks]
 
       request_uri = push_authorization_request(pushed_authorization_request_params)["request_uri"]
       query_params = URI.encode_www_form(request_uri: request_uri)
@@ -129,13 +114,8 @@ module RubyOidcClient
     end
 
     def token(query, proofs)
-      # Assuming you have a method to decode the token
       decoded_jwt = decode_jwt(query[:response])
-
-      # Create the credentials for Basic Authorization header
       basic_auth_credentials = Base64.strict_encode64("#{config[:client_id]}:#{config[:client_secret]}")
-
-      # Prepare the payload for the token exchange request
       payload = {
         code: decoded_jwt["code"],
         code_verifier: proofs[:code_verifier],
@@ -143,7 +123,6 @@ module RubyOidcClient
         redirect_uri: config[:redirect_uri]
       }
 
-      # Send the token exchange request
       uri = URI(endpoints[:token_endpoint])
       http = Net::HTTP.new(uri.host, uri.port)
       headers = {
@@ -160,7 +139,6 @@ module RubyOidcClient
     end
 
     def userinfo(access_token)
-      # Prepare the URI and headers for the userinfo request
       uri = URI(endpoints[:userinfo_endpoint])
       http = Net::HTTP.new(uri.host, uri.port)
       headers = {
@@ -168,14 +146,14 @@ module RubyOidcClient
         "Accept" => "application/json"
       }
 
-      # Send the userinfo request
       userinfo_request = Net::HTTP::Get.new(uri.request_uri, headers)
       userinfo_response = http.request(userinfo_request)
 
-      # Check the response and parse the userinfo data
       raise "Failed to retrieve userinfo: #{userinfo_response.body}" unless userinfo_response.is_a?(Net::HTTPSuccess)
 
       JSON.parse(userinfo_response.body)
+    rescue StandardError => e
+      raise "Failed to fetch well-known config: #{e.message}"
     end
 
     private
@@ -185,13 +163,18 @@ module RubyOidcClient
 
       userinfo_keys = claims_object[:userinfo]&.keys || []
       id_token_keys = claims_object[:id_token]&.keys || []
+
       (userinfo_keys + id_token_keys).uniq
     end
 
     def obtain_well_known_config_endpoints
-      uri = URI("#{config[:provider_url]}/.well-known/openid-configuration")
-      response = Net::HTTP.get(uri)
-      well_known_config = JSON.parse(response)
+      uri = URI("#{config[:iss]}/.well-known/openid-configuration")
+      http = Net::HTTP.new(uri.host, uri.port)
+      headers = { "Accept" => "application/json" }
+      request = Net::HTTP::Get.new(uri.request_uri, headers)
+      response = http.request(request)
+      raise "Failed to retrieve well-known: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
+      well_known_config = JSON.parse(response.body)
       @endpoints = {
         authorization_endpoint: well_known_config["authorization_endpoint"],
         token_endpoint: well_known_config["token_endpoint"],
@@ -206,7 +189,7 @@ module RubyOidcClient
     def create_request_object(params)
       extended_params = params.merge({
                                        iss: config[:client_id],
-                                       aud: config[:provider_url],
+                                       aud: config[:iss],
                                        exp: Time.now.to_i + 60,
                                        iat: Time.now.to_i,
                                        nbf: Time.now.to_i
