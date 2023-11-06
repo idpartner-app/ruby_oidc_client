@@ -68,7 +68,6 @@ module RubyOidcClient
       raise ArgumentError, "The URL query parameters are required." unless query
       raise ArgumentError, "The scope parameters are required." unless scope
       raise ArgumentError, "The proofs parameters are required." unless proofs
-      raise ArgumentError, "The extra_authorization_params parameters are required." unless extra_authorization_params
 
       if query[:iss].nil?
         return "#{config[:account_selector_service_url]}/auth/select-accounts?client_id=#{config[:client_id]}&visitor_id=#{query[:visitor_id]}&scope=#{scope}&claims=#{extract_claims(extra_authorization_params[:claims]).join("+")}"
